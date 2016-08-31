@@ -2,8 +2,9 @@
 
 var window = [100, 700, 800, 300]; // window[x, y, width, height]
 var rules = [
-	/(.{0,40})(admin|adm|manager|mgr|pass|password|user|account)(.{0,40})/gi,
-	/(.{0,40})(exception|sql|configuration|config|dump)(.{0,40})/gi
+	/(.{0,40})(admin|adm|manager|mgr|pass|password|user|account)(.{0,40})/gi,	//insecure
+	/(.{0,40})(exception|sql|configuration|config|dump)(.{0,40})/gi,			//error
+	/(.{0,40})(\?(?:\.\.\/)*.*\.\w{3,4})(.{0,40})/gi							// download
 ];
 
 function proxyResponse(msg) {
