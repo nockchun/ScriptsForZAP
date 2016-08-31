@@ -1,42 +1,79 @@
-function proxyRequest(msg) { return true; }
+// This script shows security information.
+
+var window = [100, 700, 800, 300]; // window[x, y, width, height]
+var rules = [
+	/(.{0,40})(admin|adm|manager|mgr|pass|password|user|account)(.{0,40})/gi,
+	/(.{0,40})(exception|sql|configuration|config|dump)(.{0,40})/gi
+];
 
 function proxyResponse(msg) {
-	var contentType   = msg.getResponseHeader().getHeader("Content-Type");
+	// check content type.
+	var contentType  = msg.getResponseHeader().getHeader("Content-Type");
+	var statusCode   = msg.getResponseHeader().getStatusCode();
+	var targetTypes  = [/text\/html/i];
+	var isTargetType = false;
+
+	if (statusCode != 200) return true;
+	for (var i=0; i < targetTypes.length; i++) {
+		if(targetTypes[i].test(contentType)) {
+			isTargetType = true;
+			break;
+		}
+	}
+	if (!isTargetType) return true;
+
+	// generate a security information
+	var body          = msg.getResponseBody().toString();	
 	var paramUrl      = msg.getUrlParams();
 	var paramForm     = msg.getFormParams();
 	var paramCookie   = msg.getCookieParamsAsString();
 	var contentLength = msg.getResponseHeader().getHeader('Content-Length');
+	var infoWindow    = "<script>var RealstudySecurityWindow=window.open('','RealstudySecurityWindow','scrollbars=yes,resizable=yes,"
+					  + "top="+window[1]+",left="+window[0]+",width="+window[2]+",height="+window[3]+"');"
+					  + "RealstudySecurityWindow.document.body.innerHTML=decodeURI(\"";
+	var infoContents, iter, item;
 
-	if ((contentType == null && contentType != "text/html") || (paramUrl.isEmpty() == true && paramForm.isEmpty() == true))
-		return true;
-
-	var proxyInfoMessage = "<script>var RealstudySecurityWindow=window.open('','RealstudySecurityWindow','scrollbars=yes,resizable=yes,top=500,left=500,width=900,height=200');"
-						 + "RealstudySecurityWindow.document.body.innerHTML = '';";
-	var iter, item;
-
-	proxyInfoMessage += "RealstudySecurityWindow.document.write('";
-	proxyInfoMessage += "PARAM_URL [";
+	infoContents = "<font color='blue'>PARAM_URL [";
 	iter = paramUrl.iterator();
 	while (iter.hasNext()) {
 		item = iter.next();
-		proxyInfoMessage += item.getName() + ":" + item.getValue() + ", ";
+		infoContents += item.getName() + ":" + item.getValue() + ", ";
 	}
-	proxyInfoMessage += "]<br>PARAM_FORM [";
+	infoContents += "]<br>PARAM_FORM [";
 	iter = paramForm.iterator();
 	while (iter.hasNext()) {
 		item = iter.next();
-		proxyInfoMessage += item.getName() + ":" + item.getValue() + ", ";
+		infoContents += item.getName() + ":" + item.getValue() + ", ";
 	}
-	proxyInfoMessage += "]<br><br>COOKIE [" + paramCookie + "]<br>"
-	proxyInfoMessage += "');</script>"
+	infoContents += "]</font><br>COOKIE [" + paramCookie + "]<br>"
+	infoContents += findInsecureInfomation(body);
 
-	msg.setResponseBody(proxyInfoMessage + msg.getResponseBody());
-	msg.getResponseHeader().setHeader('Content-Length', getByteLength(proxyInfoMessage) + parseInt(contentLength));
+	infoWindow += encodeURI(infoContents) + "\");</script>";
+
+	msg.setResponseBody(body+infoWindow);
+	msg.getResponseHeader().setHeader('Content-Length', getByteLength(body+infoWindow));
 
 	return true
+}
+
+function findInsecureInfomation(body) {
+	var foundResults = "<hr><h2>Insecure Information</h2>";
+	var regResult;
+
+	for (var i=0; i < rules.length; i++) {
+		while (found = rules[i].exec(body)) {
+			foundResults += found[1].replace(/</g, "[").replace(/>/g, "]");
+			foundResults += "<font color='red'>" + found[2] + "</font>"
+			foundResults += found[3].replace(/</g, "[").replace(/>/g, "]") + "<br>";
+		}
+	}
+
+	return foundResults;
 }
 
 function getByteLength(s,b,i,c){
     for(b=i=0;c=s.charCodeAt(i++);b+=c>>11?3:c>>7?2:1);
     return b;
 }
+
+function proxyRequest(msg) { return true; }
