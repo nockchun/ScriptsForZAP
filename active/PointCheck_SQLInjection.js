@@ -17,14 +17,23 @@ function scan(as, msg, param, value) {
 
 	var number = parseInt(value);
 	var attackValues = [];
+
+	var replaceIndex = value.indexOf("=");
+	replaceIndex = replaceIndex == -1 ? value.length/2 : replaceIndex + ((value.length - replaceIndex)/2)
+
 	if (isNaN(number)) {
 		if (value.length > 2) {
-			attackValues.push(value.substring(0,1) + "'||'" + value.substring(1,value.length));
-			attackValues.push(value.substring(0,1) + "'+'" + value.substring(1,value.length));
-			attackValues.push(value.substring(0,1) + "' '" + value.substring(1,value.length));
+			attackValues.push(value.substring(0,replaceIndex) + "'||'" + value.substring(replaceIndex, value.length));
+			attackValues.push(value.substring(0,replaceIndex) + "'+'" + value.substring(replaceIndex, value.length));
+			attackValues.push(value.substring(0,replaceIndex) + "' '" + value.substring(replaceIndex, value.length));
+			attackValues.push(value.substring(0,replaceIndex) + "'%09'" + value.substring(replaceIndex, value.length));
+			attackValues.push(value.substring(0,replaceIndex) + "'/**/'" + value.substring(replaceIndex, value.length));
+			attackValues.push(value + "`#");
+			attackValues.push(value + "`--");
 		}
 	} else {
 		attackValues.push((number + 1) + "-1");
+		attackValues.push((number + 1) + "\n-1");
 	}
 
 	as.sendAndReceive(msgOriginal, false, false);
@@ -43,18 +52,15 @@ function scan(as, msg, param, value) {
 		var bodyModifiedForDiff = bodyModified.replaceAll(value, "");
 		bodyModifiedForDiff = bodyModifiedForDiff.replaceAll(attackValues[j], "");
 
-		print(attackValues[j]);
-		print(bodyModifiedForDiff);
-
 		if (bodyOriginalForDiff == bodyModifiedForDiff) {
 			alertDesc = "It's possible";
-			alertAttack += attackValues[j];
-			alertOtherInfo += "original:" + value + ", modified:" + attackValues[j];
+			alertAttack += attackValues[j] + ", ";
+			alertOtherInfo += "original: " + value + " >>> modified: " + attackValues[j] + "\n";
 			hasProblem = true;
 		} else if(statusOriginal != statusModified) {
 			alertDesc = "Status Code is not same.\n";
-			alertAttack += attackValues[j];
-			alertOtherInfo += "original:" + statusOriginal + ", modified:" + statusModified;
+			alertAttack += attackValues[j] + ", ";
+			alertOtherInfo += "original: " + statusOriginal + " >>> modified: " + statusModified + "\n";
 			hasProblem = true;
 		}
 	}
